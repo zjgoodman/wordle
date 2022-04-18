@@ -45,11 +45,52 @@ function App({ correctAnswer = "FLAIR" }) {
     return <h2>{text}</h2>;
   }
 
+  function getIntersection(iterables) {
+    let intersection = iterables[0] || [];
+    iterables.forEach((matchingWords) => {
+      intersection = intersection.filter((word) =>
+        matchingWords.includes(word)
+      );
+    });
+    return intersection;
+  }
+
+  function PossibleWords({ label, rules }) {
+    console.log(rules);
+    const allMatches = rules.map((rule) => {
+      const { index, value } = rule;
+      return DICTIONARY_WORDS.filter((word) => word.charAt(index) == value);
+    });
+    const intersection = getIntersection(allMatches);
+    const wordBullets = intersection.map((word) => <li key={word}>{word}</li>);
+    const numberOfPossibilities = wordBullets.length;
+    return (
+      <div>
+        <h3>
+          {label} ({numberOfPossibilities})
+        </h3>
+        {numberOfPossibilities < 20 && <ul>{wordBullets}</ul>}
+      </div>
+    );
+  }
+
+  function buildRules(guess) {
+    const rules = [];
+    if (guess) {
+      for (let index = 0; index < guess.length; ++index) {
+        const letter = guess.charAt(index);
+        rules.push({ index: index, value: letter });
+      }
+    }
+    return rules;
+  }
+
   function GuessForm() {
     const {
       control,
       handleSubmit,
       reset,
+      watch,
       formState: { isValid },
     } = useForm({ mode: "onChange", reValidateMode: "onChange" });
     function submitGuess(submission) {
@@ -59,6 +100,8 @@ function App({ correctAnswer = "FLAIR" }) {
       setSubmittedGuesses([...submittedGuesses, guess]);
       reset();
     }
+    const guess = watch("guess");
+    const rules = buildRules(guess);
     return (
       <form onSubmit={handleSubmit(submitGuess)}>
         <Controller
@@ -77,6 +120,10 @@ function App({ correctAnswer = "FLAIR" }) {
         <Button onClick={handleSubmit(submitGuess)} disabled={!isValid}>
           Submit
         </Button>
+        <PossibleWords
+          label="Legal words from the letters you've given"
+          rules={rules}
+        />
       </form>
     );
   }
