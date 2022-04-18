@@ -21,6 +21,7 @@ function isDictionaryWord(guess) {
 
 function App({ correctAnswer = "FLAIR" }) {
   const [submittedGuesses, setSubmittedGuesses] = useState([]);
+  const [knownGreenLetters, setKnownGreenLetters] = useState([]);
 
   function ColoredText({ text, color = "black" }) {
     return <label style={{ fontSize: 64, color: color }}>{text}</label>;
@@ -69,7 +70,7 @@ function App({ correctAnswer = "FLAIR" }) {
         <h3>
           {label} ({numberOfPossibilities})
         </h3>
-        {numberOfPossibilities < 20 && <ul>{wordBullets}</ul>}
+        {numberOfPossibilities < 30 && <ul>{wordBullets}</ul>}
       </div>
     );
   }
@@ -82,6 +83,19 @@ function App({ correctAnswer = "FLAIR" }) {
         rules.push({ index: index, value: letter });
       }
     }
+    return rules;
+  }
+
+  function getRulesForGreenLetters(guess, correctAnswer) {
+    const rules = [];
+    for (let index = 0; index < guess.length; ++index) {
+      const expectedLetter = correctAnswer.charAt(index);
+      const actualLetter = guess.charAt(index);
+      if (expectedLetter === actualLetter) {
+        rules.push({ index: index, value: actualLetter.toLowerCase() });
+      }
+    }
+    console.log(rules);
     return rules;
   }
 
@@ -98,10 +112,15 @@ function App({ correctAnswer = "FLAIR" }) {
       const guess = submission.guess.toUpperCase();
       console.log(`submitted guess ${guess}`);
       setSubmittedGuesses([...submittedGuesses, guess]);
+      const rulesForGreenLetters = getRulesForGreenLetters(
+        guess,
+        correctAnswer
+      );
+      setKnownGreenLetters(rulesForGreenLetters);
       reset();
     }
     const guess = watch("guess");
-    const rules = buildRules(guess);
+    const legalWordsFromCurrentGuess = buildRules(guess);
     return (
       <form onSubmit={handleSubmit(submitGuess)}>
         <Controller
@@ -121,8 +140,16 @@ function App({ correctAnswer = "FLAIR" }) {
           Submit
         </Button>
         <PossibleWords
-          label="Legal words from the letters you've given"
-          rules={rules}
+          label="Possible correct answers from current guess"
+          rules={[...knownGreenLetters, ...legalWordsFromCurrentGuess]}
+        />
+        <PossibleWords
+          label="Legal words from current guess"
+          rules={legalWordsFromCurrentGuess}
+        />
+        <PossibleWords
+          label="Possible correct answers from what you know so far"
+          rules={knownGreenLetters}
         />
       </form>
     );
