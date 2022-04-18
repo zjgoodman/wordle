@@ -13,15 +13,12 @@ const GUESS_LENGTH = 5;
 const MAXIMUM_GUESSES = 6;
 
 function isDictionaryWord(guess) {
-  console.log(
-    `isDictionaryWord(${guess}): ${DICTIONARY_WORDS.includes(guess)}`
-  );
   return DICTIONARY_WORDS.includes(guess);
 }
 
 function App({ correctAnswer = "FLAIR" }) {
   const [submittedGuesses, setSubmittedGuesses] = useState([]);
-  const [knownGreenLetters, setKnownGreenLetters] = useState([]);
+  const [confirmedRules, setConfirmedRules] = useState([]);
 
   function ColoredText({ text, color = "black" }) {
     return <label style={{ fontSize: 64, color: color }}>{text}</label>;
@@ -56,11 +53,26 @@ function App({ correctAnswer = "FLAIR" }) {
     return intersection;
   }
 
+  function doesWordMatchRule(word, rule) {
+    const { relationship, index, value, not } = rule;
+    if (relationship === "index") {
+      if (not) {
+        return word.charAt(index) !== value;
+      } else {
+        return word.charAt(index) === value;
+      }
+    } else {
+      if (not) {
+        return !word.includes(value);
+      } else {
+        return word.includes(value);
+      }
+    }
+  }
+
   function PossibleWords({ label, rules }) {
-    console.log(rules);
     const allMatches = rules.map((rule) => {
-      const { index, value } = rule;
-      return DICTIONARY_WORDS.filter((word) => word.charAt(index) == value);
+      return DICTIONARY_WORDS.filter((word) => doesWordMatchRule(word, rule));
     });
     const intersection = getIntersection(allMatches);
     const wordBullets = intersection.map((word) => <li key={word}>{word}</li>);
@@ -75,27 +87,46 @@ function App({ correctAnswer = "FLAIR" }) {
     );
   }
 
-  function buildRules(guess) {
+  function buildRulesFromGuess(guess) {
     const rules = [];
     if (guess) {
       for (let index = 0; index < guess.length; ++index) {
         const letter = guess.charAt(index);
-        rules.push({ index: index, value: letter });
+        rules.push({ relationship: "index", index: index, value: letter });
       }
     }
     return rules;
   }
 
-  function getRulesForGreenLetters(guess, correctAnswer) {
+  function getRulesFromSubmittedGuess(guess, correctAnswer) {
+    guess = guess.toLowerCase();
+    correctAnswer = correctAnswer.toLowerCase();
     const rules = [];
     for (let index = 0; index < guess.length; ++index) {
       const expectedLetter = correctAnswer.charAt(index);
       const actualLetter = guess.charAt(index);
       if (expectedLetter === actualLetter) {
-        rules.push({ index: index, value: actualLetter.toLowerCase() });
+        rules.push({
+          relationship: "index",
+          index: index,
+          value: actualLetter,
+        });
+      } else if (correctAnswer.includes(actualLetter)) {
+        rules.push({
+          relationship: "index",
+          index: index,
+          value: actualLetter,
+          not: true,
+        });
+        rules.push({ relationship: "includes", value: actualLetter });
+      } else {
+        rules.push({
+          relationship: "includes",
+          value: actualLetter,
+          not: true,
+        });
       }
     }
-    console.log(rules);
     return rules;
   }
 
@@ -108,19 +139,16 @@ function App({ correctAnswer = "FLAIR" }) {
       formState: { isValid },
     } = useForm({ mode: "onChange", reValidateMode: "onChange" });
     function submitGuess(submission) {
-      console.log(submission);
       const guess = submission.guess.toUpperCase();
-      console.log(`submitted guess ${guess}`);
       setSubmittedGuesses([...submittedGuesses, guess]);
-      const rulesForGreenLetters = getRulesForGreenLetters(
-        guess,
-        correctAnswer
-      );
-      setKnownGreenLetters(rulesForGreenLetters);
+      setConfirmedRules([
+        ...confirmedRules,
+        ...getRulesFromSubmittedGuess(guess, correctAnswer),
+      ]);
       reset();
     }
     const guess = watch("guess");
-    const legalWordsFromCurrentGuess = buildRules(guess);
+    const legalWordsFromCurrentGuess = buildRulesFromGuess(guess);
     return (
       <form onSubmit={handleSubmit(submitGuess)}>
         <Controller
@@ -139,17 +167,19 @@ function App({ correctAnswer = "FLAIR" }) {
         <Button onClick={handleSubmit(submitGuess)} disabled={!isValid}>
           Submit
         </Button>
-        <PossibleWords
-          label="Possible correct answers from current guess"
-          rules={[...knownGreenLetters, ...legalWordsFromCurrentGuess]}
-        />
+        {confirmedRules.length > 0 && (
+          <PossibleWords
+            label="Possible correct answers from current guess"
+            rules={[...confirmedRules, ...legalWordsFromCurrentGuess]}
+          />
+        )}
         <PossibleWords
           label="Legal words from current guess"
           rules={legalWordsFromCurrentGuess}
         />
         <PossibleWords
           label="Possible correct answers from what you know so far"
-          rules={knownGreenLetters}
+          rules={confirmedRules}
         />
       </form>
     );
