@@ -16,7 +16,7 @@ function isDictionaryWord(guess) {
   return DICTIONARY_WORDS.includes(guess);
 }
 
-function App({ correctAnswer = "FLAIR" }) {
+function App({ correctAnswer = "FOYER" }) {
   const [submittedGuesses, setSubmittedGuesses] = useState([]);
   const [confirmedRules, setConfirmedRules] = useState([]);
 
@@ -161,26 +161,29 @@ function App({ correctAnswer = "FLAIR" }) {
           }}
           defaultValue=""
           render={({ field }) => (
-            <TextField {...field} inputProps={{ maxLength: GUESS_LENGTH }} />
+            <TextField
+              {...field}
+              inputProps={{
+                maxLength: GUESS_LENGTH,
+              }}
+            />
           )}
         />
         <Button onClick={handleSubmit(submitGuess)} disabled={!isValid}>
           Submit
         </Button>
-        {confirmedRules.length > 0 && (
+        {confirmedRules.length > 0 && guess?.length > 0 && (
           <PossibleWords
             label="Possible correct answers from current guess"
             rules={[...confirmedRules, ...legalWordsFromCurrentGuess]}
           />
         )}
-        <PossibleWords
-          label="Legal words from current guess"
-          rules={legalWordsFromCurrentGuess}
-        />
-        <PossibleWords
-          label="Possible correct answers from what you know so far"
-          rules={confirmedRules}
-        />
+        {guess?.length > 0 && (
+          <PossibleWords
+            label="Legal words from current guess"
+            rules={legalWordsFromCurrentGuess}
+          />
+        )}
       </form>
     );
   }
@@ -195,7 +198,21 @@ function App({ correctAnswer = "FLAIR" }) {
     <div>
       <h1>Wordle</h1>
       {previousGuesses}
-      {hasMoreGuessesAvailable ? <GuessForm /> : win ? "You won!" : "You lost!"}
+      {hasMoreGuessesAvailable ? (
+        <div>
+          <GuessForm />
+          {confirmedRules.length > 0 && (
+            <PossibleWords
+              label="Possible correct answers from what you know so far"
+              rules={confirmedRules}
+            />
+          )}
+        </div>
+      ) : win ? (
+        "You won!"
+      ) : (
+        "You lost!"
+      )}
     </div>
   );
 }
